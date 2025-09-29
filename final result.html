@@ -4,7 +4,9 @@
   <title>Vote Results</title>
   <script type="module">
     import { initializeApp } from "https://www.gstatic.com/firebasejs/9.23.0/firebase-app.js";
-    import { getFirestore, doc, collection, getDoc, query, where, getDocs } from "https://www.gstatic.com/firebasejs/9.23.0/firebase-firestore.js";
+    import { 
+      getFirestore, doc, collection, getDoc, query, where, onSnapshot 
+    } from "https://www.gstatic.com/firebasejs/9.23.0/firebase-firestore.js";
 
     const firebaseConfig = {
       apiKey: "AIzaSyA0dTbLOtDaw8FcsXinq_SY5SUEKNqeLgw",
@@ -22,13 +24,13 @@
 
     const questionId = "current";
 
-    window.onload = async () => {
+    async function setupResults() {
       const questionElem = document.getElementById("question");
       const resultsDiv = document.getElementById("results");
       const canvas = document.getElementById("pieChart");
       const ctx = canvas.getContext("2d");
 
-      // Load question document to get options
+      // Load the question
       const questionRef = doc(db, "questions", questionId);
       const questionSnap = await getDoc(questionRef);
 
@@ -40,81 +42,84 @@
 
       const questionData = questionSnap.data();
       questionElem.textContent = questionData.questions || questionData.question || "Question missing";
-
       const options = questionData.options || [];
+
       if (options.length === 0) {
         resultsDiv.textContent = "No options available.";
         return;
       }
 
-      // Prepare vote counts
-      const counts = {};
-      options.forEach(opt => counts[opt] = 0);
-
-      // Query votes where questionId == "current"
+      // Listen for live updates on votes
       const votesCol = collection(db, "votes");
       const votesQuery = query(votesCol, where("questionId", "==", questionId));
-      const votesSnap = await getDocs(votesQuery);
 
-      votesSnap.forEach(doc => {
-        const vote = doc.data();
-        if (vote.choice && counts.hasOwnProperty(vote.choice)) {
-          counts[vote.choice]++;
+      onSnapshot(votesQuery, (votesSnap) => {
+        // Reset counts
+        const counts = {};
+        options.forEach(opt => counts[opt] = 0);
+
+        votesSnap.forEach(doc => {
+          const vote = doc.data();
+          if (vote.choice && counts.hasOwnProperty(vote.choice)) {
+            counts[vote.choice]++;
+          }
+        });
+
+        // Calculate total votes
+        const totalVotes = Object.values(counts).reduce((a, b) => a + b, 0);
+
+        // Update text results
+        resultsDiv.innerHTML = "";
+        options.forEach(opt => {
+          const count = counts[opt];
+          const percent = totalVotes ? ((count / totalVotes) * 100).toFixed(1) : 0;
+          const p = document.createElement("p");
+          p.textContent = `${opt}: ${count} vote${count !== 1 ? 's' : ''} (${percent}%)`;
+          resultsDiv.appendChild(p);
+        });
+
+        // Redraw pie chart
+        ctx.clearRect(0, 0, canvas.width, canvas.height);
+        if (totalVotes === 0) {
+          ctx.font = "18px Arial";
+          ctx.fillText("No votes yet", canvas.width / 2 - 50, canvas.height / 2);
+          return;
         }
+
+        let startAngle = 0;
+        const colors = ['#FF6384','#36A2EB','#FFCE56','#4BC0C0','#9966FF','#FF9F40','#C9CBCF'];
+
+        options.forEach((opt, index) => {
+          const count = counts[opt];
+          if (count === 0) return;
+
+          const sliceAngle = (count / totalVotes) * 2 * Math.PI;
+          const color = colors[index % colors.length];
+
+          // Draw slice
+          ctx.beginPath();
+          ctx.moveTo(canvas.width / 2, canvas.height / 2);
+          ctx.arc(canvas.width / 2, canvas.height / 2, canvas.height / 2 - 20, startAngle, startAngle + sliceAngle);
+          ctx.closePath();
+          ctx.fillStyle = color;
+          ctx.fill();
+
+          // Draw label
+          const midAngle = startAngle + sliceAngle / 2;
+          const labelX = canvas.width / 2 + Math.cos(midAngle) * (canvas.height / 2 - 50);
+          const labelY = canvas.height / 2 + Math.sin(midAngle) * (canvas.height / 2 - 50);
+
+          ctx.fillStyle = "#000";
+          ctx.font = "14px Arial";
+          const percent = ((count / totalVotes) * 100).toFixed(1);
+          ctx.fillText(`${opt} (${percent}%)`, labelX - 30, labelY);
+
+          startAngle += sliceAngle;
+        });
       });
+    }
 
-      // Calculate total votes
-      const totalVotes = Object.values(counts).reduce((a, b) => a + b, 0);
-
-      // Display text results with percentage
-      resultsDiv.innerHTML = "";
-      options.forEach(opt => {
-        const count = counts[opt];
-        const percent = totalVotes ? ((count / totalVotes) * 100).toFixed(1) : 0;
-        const p = document.createElement("p");
-        p.textContent = `${opt}: ${count} vote${count !== 1 ? 's' : ''} (${percent}%)`;
-        resultsDiv.appendChild(p);
-      });
-
-      // Draw pie chart
-      ctx.clearRect(0, 0, canvas.width, canvas.height);
-      if (totalVotes === 0) {
-        ctx.font = "18px Arial";
-        ctx.fillText("No votes yet", canvas.width / 2 - 50, canvas.height / 2);
-        return;
-      }
-
-      let startAngle = 0;
-      const colors = ['#FF6384','#36A2EB','#FFCE56','#4BC0C0','#9966FF', '#FF9F40','#C9CBCF'];
-
-      options.forEach((opt, index) => {
-        const count = counts[opt];
-        if (count === 0) return; // skip zero slices
-
-        const sliceAngle = (count / totalVotes) * 2 * Math.PI;
-        const color = colors[index % colors.length];
-
-        // Draw slice
-        ctx.beginPath();
-        ctx.moveTo(canvas.width / 2, canvas.height / 2);
-        ctx.arc(canvas.width / 2, canvas.height / 2, canvas.height / 2 - 20, startAngle, startAngle + sliceAngle);
-        ctx.closePath();
-        ctx.fillStyle = color;
-        ctx.fill();
-
-        // Draw label
-        const midAngle = startAngle + sliceAngle / 2;
-        const labelX = canvas.width / 2 + Math.cos(midAngle) * (canvas.height / 2 - 50);
-        const labelY = canvas.height / 2 + Math.sin(midAngle) * (canvas.height / 2 - 50);
-
-        ctx.fillStyle = "#000";
-        ctx.font = "14px Arial";
-        const percent = ((count / totalVotes) * 100).toFixed(1);
-        ctx.fillText(`${opt} (${percent}%)`, labelX - 30, labelY);
-
-        startAngle += sliceAngle;
-      });
-    };
+    window.onload = setupResults;
   </script>
   <style>
     body { font-family: Arial; text-align: center; margin-top: 40px; }
