@@ -1,1 +1,120 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Voting App</title>
+  <style>
+    body {
+      font-family: Arial, sans-serif;
+      background: #161D26;
+      display: flex;
+      flex-direction: column; /* stack image + card */
+      justify-content: flex-start;
+      align-items: center;
+      height: 100vh;
+      margin: 0;
+      padding-top: 20px; /* space from top of screen */
+    }
+
+    /* Top floating image */
+    .top-image {
+      text-align: center;
+      margin-bottom: 20px;
+    }
+
+    .top-image img {
+      max-width: 300px; /* adjust size */
+      height: auto;
+      display: block;
+      margin: 0 auto;
+    }
+
+    /* Poll card */
+    .poll-card {
+      background: #fff;
+      padding: 30px;
+      border-radius: 15px;
+      box-shadow: 0 6px 20px rgba(0,0,0,0.1);
+      text-align: center;
+      max-width: 1000px;
+      width: 100%;
+    }
+
+    h2 {
+      font-size: 50px;
+      margin-bottom: 20px;
+      color: #222;
+    }
+
+    .option-btn {
+      display: block;
+      width: 100%;
+      margin: 25px 0;
+      padding: 40px;
+      font-size: 35px;
+      border: none;
+      border-radius: 20px;
+      cursor: pointer;
+      color: white;
+      transition: background 1s ease;
+    }
+
+    .option-btn:nth-child(1) {
+      background: #f36f21;
+    }
+    .option-btn:nth-child(1):hover {
+      background: #d85e15;
+    }
+
+    .option-btn:nth-child(2) {
+      background: #3b97d3;
+    }
+    .option-btn:nth-child(2):hover {
+      background: #2a7bb0;
+    }
+
+    #results {
+      margin-top: 20px;
+      font-size: 16px;
+      color: #444;
+    }
+.top-image img {
+  max-width: 300px; /* bigger */
+width:100%;
+  height: 100%;
+max-height:300px;
+}
+  </style>
+
+</head>
+<body>
+  <!-- Floating image above card -->
+  <div class="top-image">
+    <img src="https://m.media-amazon.com/images/I/61+nI2GbVCL.png" alt="Top Image"> 
+
+  </div>
+
+  <!-- Poll card -->
+  <div class="poll-card">
+    <h2 id="question">What do you do for fun?</h2>
+    <div id="options">
+      <button class="option-btn">play football</button>
+      <button class="option-btn">watching movies</button>
+    </div>
+  </div>
+
+  <script>
+    const buttons = document.querySelectorAll('.option-btn');
+    const results = document.getElementById('results');
+
+    buttons.forEach(btn => {
+      btn.addEventListener('click', () => {
+        results.innerText = `You voted for: ${btn.innerText}`;
+      });
+    });
+  </script>
+</body>
+</html>
+
 
