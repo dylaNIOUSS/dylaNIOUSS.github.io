@@ -9,28 +9,28 @@
       font-family: Arial, sans-serif;
       background: #161D26;
       display: flex;
-      flex-direction: column; /* stack image + card */
+      flex-direction: column;
       justify-content: flex-start;
       align-items: center;
       height: 100vh;
       margin: 0;
-      padding-top: 20px; /* space from top of screen */
+      padding-top: 20px;
     }
 
-    /* Top floating image */
     .top-image {
       text-align: center;
       margin-bottom: 20px;
     }
 
     .top-image img {
-      max-width: 300px; /* adjust size */
+      max-width: 300px;
+      width: 100%;
+      max-height: 300px;
       height: auto;
       display: block;
       margin: 0 auto;
     }
 
-    /* Poll card */
     .poll-card {
       background: #fff;
       padding: 30px;
@@ -42,7 +42,7 @@
     }
 
     h2 {
-      font-size: 50px;
+      font-size: 40px;
       margin-bottom: 20px;
       color: #222;
     }
@@ -50,71 +50,116 @@
     .option-btn {
       display: block;
       width: 100%;
-      margin: 25px 0;
-      padding: 40px;
-      font-size: 35px;
+      margin: 15px 0;
+      padding: 30px;
+      font-size: 28px;
       border: none;
       border-radius: 20px;
       cursor: pointer;
       color: white;
-      transition: background 1s ease;
+      transition: background 0.3s ease;
     }
 
-    .option-btn:nth-child(1) {
-      background: #f36f21;
-    }
-    .option-btn:nth-child(1):hover {
-      background: #d85e15;
-    }
-
-    .option-btn:nth-child(2) {
-      background: #3b97d3;
-    }
-    .option-btn:nth-child(2):hover {
-      background: #2a7bb0;
-    }
+    .option-btn:nth-child(odd) { background: #f36f21; }
+    .option-btn:nth-child(odd):hover { background: #d85e15; }
+    .option-btn:nth-child(even) { background: #3b97d3; }
+    .option-btn:nth-child(even):hover { background: #2a7bb0; }
 
     #results {
       margin-top: 20px;
-      font-size: 16px;
+      font-size: 20px;
+      font-weight: bold;
       color: #444;
     }
-.top-image img {
-  max-width: 300px; /* bigger */
-width:100%;
-  height: 100%;
-max-height:300px;
-}
   </style>
-
 </head>
 <body>
-  <!-- Floating image above card -->
   <div class="top-image">
     <img src="https://m.media-amazon.com/images/I/61+nI2GbVCL.png" alt="Top Image"> 
-
   </div>
 
-  <!-- Poll card -->
   <div class="poll-card">
-    <h2 id="question">What do you do for fun?</h2>
-    <div id="options">
-      <button class="option-btn">play football</button>
-      <button class="option-btn">watching movies</button>
-    </div>
+    <h2 id="question">Loading question...</h2>
+    <div id="options"></div>
+    <div id="results"></div>
   </div>
 
-  <script>
-    const buttons = document.querySelectorAll('.option-btn');
-    const results = document.getElementById('results');
+<script type="module">
+  import { initializeApp } from "https://www.gstatic.com/firebasejs/9.23.0/firebase-app.js";
+  import { 
+    getFirestore, doc, getDoc, addDoc, collection 
+  } from "https://www.gstatic.com/firebasejs/9.23.0/firebase-firestore.js";
 
-    buttons.forEach(btn => {
-      btn.addEventListener('click', () => {
-        results.innerText = `You voted for: ${btn.innerText}`;
+  // Firebase config
+  const firebaseConfig = {
+    apiKey: "AIzaSyA0dTbLOtDaw8FcsXinq_SY5SUEKNqeLgw",
+    authDomain: "employee-kiosk-2bca5.firebaseapp.com",
+    projectId: "employee-kiosk-2bca5",
+    storageBucket: "employee-kiosk-2bca5.firebasestorage.app",
+    messagingSenderId: "824085734651",
+    appId: "1:824085734651:web:81e871734e37c9c6d3bc5e",
+    measurementId: "G-2LP37JWFQ5"
+  };
+
+  const app = initializeApp(firebaseConfig);
+  const db = getFirestore(app);
+
+  const questionId = "current"; 
+  const questionElem = document.getElementById("question");
+  const optionsDiv = document.getElementById("options");
+  const resultsElem = document.getElementById("results");
+
+  async function loadQuestion() {
+    try {
+      const qRef = doc(db, "questions", questionId);
+      const qSnap = await getDoc(qRef);
+
+      if (!qSnap.exists()) {
+        questionElem.textContent = "Question not found.";
+        return;
+      }
+
+      const qData = qSnap.data();
+
+      // FIX: use "questions" (plural) instead of "question"
+      questionElem.textContent = qData.questions || "Untitled Question";
+
+      optionsDiv.innerHTML = "";
+
+      (qData.options || []).forEach((opt, index) => {
+        const btn = document.createElement("button");
+        btn.className = "option-btn";
+        btn.textContent = opt;
+
+        if (index % 2 === 0) {
+          btn.style.background = "#f36f21";
+        } else {
+          btn.style.background = "#3b97d3";
+        }
+
+        btn.addEventListener("click", async () => {
+          try {
+            await addDoc(collection(db, "votes"), {
+              questionId: questionId,
+              choice: opt,
+              timestamp: Date.now()
+            });
+            resultsElem.textContent = `Your vote has been submited`;
+          } catch (err) {
+            console.error("Error saving vote:", err);
+            resultsElem.textContent = "❌ Failed to save vote.";
+          }
+        });
+
+        optionsDiv.appendChild(btn);
       });
-    });
-  </script>
+    } catch (err) {
+      console.error("Error loading question:", err);
+      questionElem.textContent = "Error loading question.";
+    }
+  }
+
+  loadQuestion();
+</script>
 </body>
 </html>
-
-
